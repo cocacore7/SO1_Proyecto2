@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/go-redis/redis"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -40,7 +41,7 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@34.125.215.146:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -103,20 +104,41 @@ func main() {
 			respuesta, err := collection.InsertOne(context.TODO(), Log)
 			if err != nil {
 				fmt.Print("Logs No Registrado")
-				panic(err)
-			} else {
 				fmt.Print(respuesta)
+				panic(err)
 			}
 
-			//Crear registro Tidb
+			//Convertir datos Log en JSON
+			tiempoReal, err := json.Marshal(Log)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-			//Almacenar registro Tidb
+			//Conectar con clientes
+			clientredis := redis.NewClient(&redis.Options{
+				Addr:     "34.125.235.244:6379",
+				Password: "",
+				DB:       0,
+			})
 
-			//Crear registro redis
+			clienttidis := redis.NewClient(&redis.Options{
+				Addr:     "34.125.12.54:5379",
+				Password: "",
+				DB:       0,
+			})
 
-			//Almacenar registro redis
+			//Almacenar registros redis y tidis
 
-			log.Printf("Received a message: %s", d.Body)
+			errorReids := clientredis.Set("tiempoReal", tiempoReal, 0).Err()
+			if err != nil {
+				panic(errorReids)
+			}
+
+			errorTidis := clienttidis.Set("tiempoReal", tiempoReal, 0).Err()
+			if err != nil {
+				panic(errorTidis)
+			}
 		}
 	}()
 
